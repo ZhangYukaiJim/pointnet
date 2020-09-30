@@ -78,18 +78,21 @@ def pointmixup(X1, X2, lam):
     return mix
 
 def mixup_data(data, label, alpha):
+    # print("Mixing Points...")
     if alpha > 0:
         lam = np.random.beta(alpha, alpha)
     else:
         lam = 1
-    batch_size = data.size()[0]
-    index = tf.range(batch_size)
+    batch_size = data.shape[0]
+    # print("batch_size: ", batch_size)
+    index = range(batch_size)
     mixed_data = np.zeros(data.shape)
     label_a = np.zeros(label.shape)
     label_b = np.zeros(label.shape)
     for i in range(batch_size):
         mixed_data[i] = pointmixup(data[i], data[index[i],:], lam)
         label_a[i], label_b[i] = label[i], label[index[i]]
+    # print("Mixing completed")
     return mixed_data, label_a, label_b, lam
 
 
@@ -123,7 +126,7 @@ def train():
     with tf.Graph().as_default():
         with tf.device('/gpu:'+str(GPU_INDEX)):
             pointclouds_pl, labels_a_pl, labels_b_pl = MODEL.placeholder_inputs(BATCH_SIZE, NUM_POINT)
-            lam_pl = tf.placeholder(tf.float32, shape=(1))
+            lam_pl = tf.placeholder(tf.float32, shape=())
             is_training_pl = tf.placeholder(tf.bool, shape=())
             print(is_training_pl)
             
@@ -145,7 +148,9 @@ def train():
 
             correct_a = tf.equal(tf.argmax(pred, 1), tf.to_int64(labels_a_pl))
             correct_b = tf.equal(tf.argmax(pred, 1), tf.to_int64(labels_b_pl))
-            correct = tf.multiply(correct_a, lam_pl) + tf.multiplay(correct_b, (1-lam_pl))
+            correct_a = tf.cast(correct_a, tf.float32)
+            correct_b = tf.cast(correct_b, tf.float32)
+            correct = tf.multiply(correct_a, lam_pl) + tf.multiply(correct_b, (1-lam_pl))
 
             accuracy = tf.reduce_sum(tf.cast(correct, tf.float32)) / float(BATCH_SIZE)
             tf.summary.scalar('accuracy', accuracy)
@@ -186,6 +191,7 @@ def train():
         ops = {'pointclouds_pl': pointclouds_pl,
                'labels_a_pl': labels_a_pl,
                'labels_b_pl': labels_b_pl,
+               'lam_pl': lam_pl,
                'is_training_pl': is_training_pl,
                'pred': pred,
                'loss': loss,
@@ -249,8 +255,9 @@ def train_one_epoch(sess, ops, train_writer):
                 ops['train_op'], ops['loss'], ops['pred']], feed_dict=feed_dict)
             train_writer.add_summary(summary, step)
             pred_val = np.argmax(pred_val, 1)
-            correct = np.sum(pred_val == current_label[start_idx:end_idx])
-            total_correct += correct
+            correct_a = np.sum(pred_val == batch_label_a)
+            correct_b = np.sum(pred_val == batch_label_b)
+            total_correct += (lam*correct_a + (1-lam)*correct_b)
             total_seen += BATCH_SIZE
             loss_sum += loss_val
         
