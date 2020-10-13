@@ -136,9 +136,9 @@ def get_model(point_cloud, input_label, is_training, cat_num, part_num, \
 
     return net, net2, end_points
 
-def get_loss(l_pred, seg_pred, label, seg, weight, end_points):
-    per_instance_label_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=l_pred, labels=label)
-    label_loss = tf.reduce_mean(per_instance_label_loss)
+def get_loss(l_pred, seg_pred, seg, weight, end_points):
+    # per_instance_label_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=l_pred, labels=label)
+    # label_loss = tf.reduce_mean(per_instance_label_loss)
 
     # size of seg_pred is batch_size x point_num x part_cat_num
     # size of seg is batch_size x point_num
@@ -154,7 +154,8 @@ def get_loss(l_pred, seg_pred, label, seg, weight, end_points):
     mat_diff_loss = tf.nn.l2_loss(mat_diff) 
     
 
-    total_loss = weight * seg_loss + (1 - weight) * label_loss + mat_diff_loss * 1e-3
+    # total_loss = weight * seg_loss + (1 - weight) * label_loss + mat_diff_loss * 1e-3
+    total_loss = seg_loss + mat_diff_loss * 1e-3
 
-    return total_loss, label_loss, per_instance_label_loss, seg_loss, per_instance_seg_loss, per_instance_seg_pred_res
+    return total_loss, seg_loss, per_instance_seg_loss, per_instance_seg_pred_res
 
