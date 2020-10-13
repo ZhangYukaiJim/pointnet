@@ -79,6 +79,32 @@ SUMMARIES_FOLDER =  os.path.join(output_dir, 'summaries')
 if not os.path.exists(SUMMARIES_FOLDER):
     os.mkdir(SUMMARIES_FOLDER)
 
+def pointmixup(X1, X2, lam):
+    d = cdist(X1, X2, 'euclidean')
+    assignment = linear_sum_assignment(d)
+    X1 = X1[assignment[0]]
+    X2 = X2[assignment[1]]
+    mix = X1*lam + X2*(1-lam)
+    return mix
+
+def mixup_data(data, label, alpha):
+    # print("Mixing Points...")
+    if alpha > 0:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1
+    batch_size = data.shape[0]
+    # print("batch_size: ", batch_size)
+    index = range(batch_size)
+    mixed_data = np.zeros(data.shape)
+    label_a = np.zeros(label.shape)
+    label_b = np.zeros(label.shape)
+    for i in range(batch_size):
+        mixed_data[i] = pointmixup(data[i], data[index[i],:], lam)
+        label_a[i], label_b[i] = label[i], label[index[i]]
+    # print("Mixing completed")
+    return mixed_data, label_a, label_b, lam
+
 def printout(flog, data):
 	print(data)
 	flog.write(data + '\n')
