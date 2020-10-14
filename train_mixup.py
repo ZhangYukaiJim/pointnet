@@ -240,6 +240,7 @@ def train_one_epoch(sess, ops, train_writer):
             end_idx = (batch_idx+1) * BATCH_SIZE
 
             """Mixup"""
+            print("Batch: %d", batch_idx)
             batch_data, batch_label_a, batch_label_b,lam = \
                 mixup_data(current_data[start_idx:end_idx, :, :], current_label[start_idx:end_idx], FLAGS.alpha)
           
