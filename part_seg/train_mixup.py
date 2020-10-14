@@ -98,7 +98,8 @@ def mixup_data(data, label, part, alpha):
         lam = 1
     batch_size = data.shape[0]
     # print("batch_size: ", batch_size)
-    index = range(batch_size)
+    index = np.arange(batch_size)
+    np.random.shuffle(index)
     mixed_data = np.zeros(data.shape)
     part_a = np.zeros(part.shape, dtype=int)
     part_b = np.zeros(part.shape, dtype=int)
@@ -106,8 +107,8 @@ def mixup_data(data, label, part, alpha):
     label_b = np.zeros(label.shape, dtype=int)
     for i in range(batch_size):
         mixed_data[i], assignment = pointmixup(data[i], data[index[i],:], lam)
-        part_a = part[assignment[0], ...]
-        part_b = part[assignment[1], ...]
+        part_a[i] = part[i, assignment[0]]
+        part_b[i] = part[i, assignment[1]]
         label_a[i], label_b[i] = label[i], label[index[i]]
     # print("Mixing completed")
     return mixed_data, label_a, label_b, part_a, part_b, lam
