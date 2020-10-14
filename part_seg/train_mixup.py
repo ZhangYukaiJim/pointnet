@@ -100,10 +100,10 @@ def mixup_data(data, label, part, alpha):
     # print("batch_size: ", batch_size)
     index = range(batch_size)
     mixed_data = np.zeros(data.shape)
-    part_a = np.zeros(part.shape)
-    part_b = np.zeros(part.shape)
-    label_a = np.zeros(label.shape)
-    label_b = np.zeros(label.shape)
+    part_a = np.zeros(part.shape, dtype=int)
+    part_b = np.zeros(part.shape, dtype=int)
+    label_a = np.zeros(label.shape, dtype=int)
+    label_b = np.zeros(label.shape, dtype=int)
     for i in range(batch_size):
         mixed_data[i], assignment = pointmixup(data[i], data[index[i],:], lam)
         part_a = part[assignment[0], ...]
