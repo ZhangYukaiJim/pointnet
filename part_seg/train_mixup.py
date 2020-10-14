@@ -12,6 +12,9 @@ sys.path.append(os.path.dirname(BASE_DIR))
 import provider
 import pointnet_part_seg as model
 
+from scipy.spatial.distance import cdist
+from scipy.optimize import linear_sum_assignment
+
 # DEFAULT SETTINGS
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=1, help='GPU to use [default: GPU 0]')
@@ -85,9 +88,9 @@ def pointmixup(X1, X2, lam):
     X1 = X1[assignment[0]]
     X2 = X2[assignment[1]]
     mix = X1*lam + X2*(1-lam)
-    return mix
+    return mix, assignment
 
-def mixup_data(data, label, alpha):
+def mixup_data(data, label, part, alpha):
     # print("Mixing Points...")
     if alpha > 0:
         lam = np.random.beta(alpha, alpha)
@@ -97,13 +100,17 @@ def mixup_data(data, label, alpha):
     # print("batch_size: ", batch_size)
     index = range(batch_size)
     mixed_data = np.zeros(data.shape)
+    part_a = np.zeros(part.shape)
+    part_b = np.zeros(part.shape)
     label_a = np.zeros(label.shape)
     label_b = np.zeros(label.shape)
     for i in range(batch_size):
-        mixed_data[i] = pointmixup(data[i], data[index[i],:], lam)
+        mixed_data[i], assignment = pointmixup(data[i], data[index[i],:], lam)
+        part_a = part[assignment[0], ...]
+        part_b = part[assignment[1], ...]
         label_a[i], label_b[i] = label[i], label[index[i]]
     # print("Mixing completed")
-    return mixed_data, label_a, label_b, lam
+    return mixed_data, label_a, label_b, part_a, part_b, lam
 
 def printout(flog, data):
 	print(data)
@@ -235,7 +242,14 @@ def train():
                 cur_data, cur_labels, order = provider.shuffle_data(cur_data, np.squeeze(cur_labels))
                 cur_seg = cur_seg[order, ...]
 
-                cur_labels_one_hot = convert_label_to_one_hot(cur_labels)
+                # cur_labels_one_hot = convert_label_to_one_hot(cur_labels)
+
+                ###Mix up###
+                mixed_cur_data, cur_labels_a, cur_labels_b, cur_seg_a, cur_seg_b, lam= mixup_data(cur_data, cur_labels, cur_seg, 0.4)
+                cur_labels_a_onehot = convert_label_to_one_hot(cur_labels_a)
+                cur_labels_b_onehot = convert_label_to_one_hot(cur_label_b)
+                mixed_cur_labels_onehot = lam * cur_labels_a_onehot + (1 - lam) * cur_label_b_onehot
+
 
                 num_data = len(cur_labels)
                 num_batch = num_data // batch_size
@@ -250,29 +264,68 @@ def train():
                     begidx = j * batch_size
                     endidx = (j + 1) * batch_size
 
-                    feed_dict = {
-                            pointclouds_ph: cur_data[begidx: endidx, ...], 
-                            labels_ph: cur_labels[begidx: endidx, ...], 
-                            input_label_ph: cur_labels_one_hot[begidx: endidx, ...], 
-                            seg_ph: cur_seg[begidx: endidx, ...],
+                    # feed_dict = {
+                    #         pointclouds_ph: cur_data[begidx: endidx, ...], 
+                    #         labels_ph: cur_labels[begidx: endidx, ...], 
+                    #         input_label_ph: cur_labels_one_hot[begidx: endidx, ...], 
+                    #         seg_ph: cur_seg[begidx: endidx, ...],
+                    #         is_training_ph: is_training, 
+                    #         }
+
+                    feed_dict_a = {
+                            pointclouds_ph: mixed_cur_data[begidx: endidx, ...], 
+                            labels_ph: cur_labels_a[begidx: endidx, ...], 
+                            input_label_ph: mixed_cur_labels_onehot[begidx: endidx, ...], 
+                            seg_ph: cur_seg_a[begidx: endidx, ...],
                             is_training_ph: is_training, 
                             }
 
-                    _, loss_val, label_loss_val, seg_loss_val, per_instance_label_loss_val, \
-                            per_instance_seg_loss_val, label_pred_val, seg_pred_val, pred_seg_res \
+                    feed_dict_b = {
+                            pointclouds_ph: mixed_cur_data[begidx: endidx, ...], 
+                            labels_ph: cur_labels_b[begidx: endidx, ...], 
+                            input_label_ph: mixed_cur_labels_onehot[begidx: endidx, ...], 
+                            seg_ph: cur_seg_b[begidx: endidx, ...],
+                            is_training_ph: is_training, 
+                            }
+
+                    # _, loss_val, label_loss_val, seg_loss_val, per_instance_label_loss_val, \
+                    #         per_instance_seg_loss_val, label_pred_val, seg_pred_val, pred_seg_res \
+                    #         = sess.run([train_op, loss, label_loss, seg_loss, per_instance_label_loss, \
+                    #         per_instance_seg_loss, labels_pred, seg_pred, per_instance_seg_pred_res], \
+                    #         feed_dict=feed_dict)
+
+
+                    _, loss_val_a, label_loss_val_a, seg_loss_val_a, per_instance_label_loss_val_a, \
+                            per_instance_seg_loss_val_a, label_pred_val_a, seg_pred_val_a, pred_seg_res_a \
                             = sess.run([train_op, loss, label_loss, seg_loss, per_instance_label_loss, \
                             per_instance_seg_loss, labels_pred, seg_pred, per_instance_seg_pred_res], \
-                            feed_dict=feed_dict)
+                            feed_dict=feed_dict_a)
 
-                    per_instance_part_acc = np.mean(pred_seg_res == cur_seg[begidx: endidx, ...], axis=1)
+                    _, loss_val_b, label_loss_val_b, seg_loss_val_b, per_instance_label_loss_val_b, \
+                            per_instance_seg_loss_val_b, label_pred_val_b, seg_pred_val_b, pred_seg_res_b \
+                            = sess.run([train_op, loss, label_loss, seg_loss, per_instance_label_loss, \
+                            per_instance_seg_loss, labels_pred, seg_pred, per_instance_seg_pred_res], \
+                            feed_dict=feed_dict_b)
+
+                    loss_val = lam * loss_val_a + (1-lam)*loss_val_b
+                    label_loss_val = lam * label_loss_val_a + (1-lam) * label_loss_val_b
+                    seg_loss_val = lam * seg_loss_val_a + (1-lam) * seg_loss_val_b
+
+                    per_instance_part_acc_a = np.mean(pred_seg_res_a == cur_seg[begidx: endidx, ...], axis=1)
+                    per_instance_part_acc_b = np.mean(pred_seg_res_b == cur_seg[begidx: endidx, ...], axis=1)
+                    per_instance_part_acc   = lam * per_instance_part_acc_a + (1-lam) * per_instance_part_acc_b
                     average_part_acc = np.mean(per_instance_part_acc)
 
                     total_loss += loss_val
                     total_label_loss += label_loss_val
                     total_seg_loss += seg_loss_val
                     
-                    per_instance_label_pred = np.argmax(label_pred_val, axis=1)
-                    total_label_acc += np.mean(np.float32(per_instance_label_pred == cur_labels[begidx: endidx, ...]))
+                    per_instance_label_pred_a = np.argmax(label_pred_val_a, axis=1)
+                    per_instance_label_pred_b = np.argmax(label_pred_val_b, axis=1)
+                    label_acc_a = np.mean(np.float32(per_instance_label_pred_a == cur_labels_a[begidx: endidx, ...]))
+                    label_acc_b = np.mean(np.float32(per_instance_label_pred_b == cur_labels_b[begidx: endidx, ...]))
+                    label_acc = lam*label_acc_a + (1-lam)*label_acc_b
+                    total_label_acc += label_acc
                     total_seg_acc += average_part_acc
 
                 total_loss = total_loss * 1.0 / num_batch
