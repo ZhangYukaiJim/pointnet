@@ -78,6 +78,7 @@ def pointmixup(X1, X2, lam):
     return mix
 
 def mixup_data(data, label, alpha):
+    print("mixing data")
     if alpha > 0:
         lam = np.random.beta(alpha, alpha)
     else:
@@ -91,6 +92,7 @@ def mixup_data(data, label, alpha):
     for i in range(batch_size):
         mixed_data[i] = pointmixup(data[i], data[index[i],:], lam)
         label_a[i], label_b[i] = label[i], label[index[i]]
+    print("done mixing")
     return mixed_data, label_a, label_b, lam
 
 
