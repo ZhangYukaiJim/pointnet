@@ -70,29 +70,38 @@ TEST_FILES = provider.getDataFiles(\
     os.path.join(BASE_DIR, 'data/modelnet40_ply_hdf5_2048/test_files.txt'))
 
 def pointmixup(X1, X2, lam):
+    print(1)
     d = cdist(X1, X2, 'euclidean')
+    print(2)
     assignment = linear_sum_assignment(d)
+    print(3)
     X1 = X1[assignment[0]]
     X2 = X2[assignment[1]]
     mix = X1*lam + X2*(1-lam)
     return mix
 
 def mixup_data(data, label, alpha):
-    # print("Mixing Points...")
+    # data = np.random.rand(data.shape[0], data.shape[1], data.shape[2])
+    print("Mixing Points...")
     if alpha > 0:
         lam = np.random.beta(alpha, alpha)
     else:
         lam = 1
     batch_size = data.shape[0]
-    # print("batch_size: ", batch_size)
-    index = range(batch_size)
+    print("batch_size: ", batch_size)
+    index = np.arange(batch_size)
+    print("shuffle start")
+    np.random.shuffle(index)
+    print("shuffle ends")
     mixed_data = np.zeros(data.shape)
     label_a = np.zeros(label.shape)
     label_b = np.zeros(label.shape)
     for i in range(batch_size):
+        print("mixing point cloud ", i)
         mixed_data[i] = pointmixup(data[i], data[index[i],:], lam)
+        print("mixing done")
         label_a[i], label_b[i] = label[i], label[index[i]]
-    # print("Mixing completed")
+    print("Mixing completed")
     return mixed_data, label_a, label_b, lam
 
 
