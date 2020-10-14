@@ -247,8 +247,8 @@ def train():
                 ###Mix up###
                 mixed_cur_data, cur_labels_a, cur_labels_b, cur_seg_a, cur_seg_b, lam= mixup_data(cur_data, cur_labels, cur_seg, 0.4)
                 cur_labels_a_onehot = convert_label_to_one_hot(cur_labels_a)
-                cur_labels_b_onehot = convert_label_to_one_hot(cur_label_b)
-                mixed_cur_labels_onehot = lam * cur_labels_a_onehot + (1 - lam) * cur_label_b_onehot
+                cur_labels_b_onehot = convert_label_to_one_hot(cur_labels_b)
+                mixed_cur_labels_onehot = lam * cur_labels_a_onehot + (1 - lam) * cur_labels_b_onehot
 
 
                 num_data = len(cur_labels)
