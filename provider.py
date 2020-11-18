@@ -106,3 +106,39 @@ def load_h5_data_label_seg(h5_filename):
 
 def loadDataFile_with_seg(filename):
     return load_h5_data_label_seg(filename)
+
+def cropout_point_cloud(batch_data, max_trans_dist, close=True):
+    close = True
+    batch_size = batch_data.shape[0]
+    trans_dist = np.random.rand(batch_size)*max_trans_dist
+    translation = np.zeros((batch_size, 3))
+    translation[:, 2] = trans_dist          #translation distance initized onto z
+
+    #rotate the translation vectors to random direction
+    for k in range(batch_size):
+        angle_x = np.random.uniform()*2*np.pi
+        angle_y = np.random.uniform()*2*np.pi
+        cos_x = np.cos(angle_x)
+        sin_x = np.sin(angle_x)
+        cos_y = np.cos(angle_y)
+        sin_y = np.sin(angle_y)
+        rotation_x = np.array([[1, 0, 0],
+                            [0, cos_x, -sin_x],
+                            [0, sin_x, cos_x]])
+        rotation_y = np.array([[cos_y, 0, sin_y],
+                            [0, 1, 0],
+                            [-sin_y, 0, cos_y]])
+        translation[k, :] =  np.dot(np.dot(translation[k,:],rotation_x),rotation_y)
+
+    #apply translation
+    batch_data_t = batch_data + np.expand_dims(translation,1)
+    batch_dist = np.sqrt(np.sum(np.square(batch_data_t), 2))
+    out_idx = np.where(batch_dist>1)
+
+    if(close): 
+        batch_data_t[out_idx[0],out_idx[1],:] = \
+            batch_data_t[out_idx[0],out_idx[1],:]/np.expand_dims(batch_dist[out_idx],1)
+    else:
+        batch_data_t[out_idx[0],out_idx[1],:] = 0
+    
+    return batch_data_t
