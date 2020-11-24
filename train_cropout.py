@@ -26,7 +26,8 @@ parser.add_argument('--momentum', type=float, default=0.9, help='Initial learnin
 parser.add_argument('--optimizer', default='adam', help='adam or momentum [default: adam]')
 parser.add_argument('--decay_step', type=int, default=200000, help='Decay step for lr decay [default: 200000]')
 parser.add_argument('--decay_rate', type=float, default=0.7, help='Decay rate for lr decay [default: 0.8]')
-parser.add_argument('--max_trans_dist', type=float, default=0.25, help='Maximum translation distance for cropout [default: 0.25]')
+parser.add_argument('--cropout_type', default='bounding_sphere', help='bounding_sphere or bubble')
+parser.add_argument('--max_trans_dist', type=float, default=0.25, help='Maximum translation distance or max bubble radius for cropout [default: 0.25]')
 parser.add_argument('--close', type=bool, default=True, help='Whether to close the opening created by cropout [default: True]')
 FLAGS = parser.parse_args()
 
@@ -40,6 +41,7 @@ MOMENTUM = FLAGS.momentum
 OPTIMIZER = FLAGS.optimizer
 DECAY_STEP = FLAGS.decay_step
 DECAY_RATE = FLAGS.decay_rate
+CROPOUT_TYPE = FLAGS.cropout_type
 
 MODEL = importlib.import_module(FLAGS.model) # import network module
 MODEL_FILE = os.path.join(BASE_DIR, 'models', FLAGS.model+'.py')
@@ -197,7 +199,13 @@ def train_one_epoch(sess, ops, train_writer):
             end_idx = (batch_idx+1) * BATCH_SIZE
             
             # Augment batched point clouds by rotation and jittering
-            cropped_data = provider.cropout_point_cloud(current_data[start_idx:end_idx,:,:,], FLAGS.max_trans_dist, FLAGS.close)
+            if CROPOUT_TYPE == 'bounding_sphere':
+                cropped_data = provider.cropout_point_cloud(current_data[start_idx:end_idx,:,:,], FLAGS.max_trans_dist, random_trans_dist=True, close=FLAGS.close)
+            elif CROPOUT_TYPE == 'bubble':
+                cropped_data = provider.bubble_cropout(current_data[start_idx:end_idx,:,:,], FLAGS.max_trans_dist, random_bubble_radius=True, close=FLAGS.close)
+            else:
+                print("cropeout_type does not exist")
+                return
             rotated_data = provider.rotate_point_cloud(cropped_data)
             jittered_data = provider.jitter_point_cloud(rotated_data)
             feed_dict = {ops['pointclouds_pl']: jittered_data,
