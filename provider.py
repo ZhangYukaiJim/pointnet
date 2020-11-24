@@ -107,10 +107,13 @@ def load_h5_data_label_seg(h5_filename):
 def loadDataFile_with_seg(filename):
     return load_h5_data_label_seg(filename)
 
-def cropout_point_cloud(batch_data, max_trans_dist, close=True):
-    close = True
+def cropout_point_cloud(batch_data, max_trans_dist, random_trans_dist=True, close=True):
     batch_size = batch_data.shape[0]
-    trans_dist = np.random.rand(batch_size)*max_trans_dist
+    num_points = batch_data.shape[1]
+    if random_trans_dist:
+        trans_dist = np.random.rand(batch_size)*max_trans_dist
+    else:
+        trans_dist = np.ones(batch_size)*max_trans_dist
     translation = np.zeros((batch_size, 3))
     translation[:, 2] = trans_dist          #translation distance initized onto z
 
@@ -133,12 +136,23 @@ def cropout_point_cloud(batch_data, max_trans_dist, close=True):
     #apply translation
     batch_data_t = batch_data + np.expand_dims(translation,1)
     batch_dist = np.sqrt(np.sum(np.square(batch_data_t), 2))
-    out_idx = np.where(batch_dist>1)
 
     if(close): 
+        out_idx = np.where(batch_dist>1)
         batch_data_t[out_idx[0],out_idx[1],:] = \
             batch_data_t[out_idx[0],out_idx[1],:]/np.expand_dims(batch_dist[out_idx],1)
     else:
-        batch_data_t[out_idx[0],out_idx[1],:] = 0
+        for k in range(batch_size):
+            #mask out points outside the boundary
+            out_idx = np.where(batch_dist[k,:]>1)
+            out_num = len(out_idx[0])
+            mask = np.ones(num_points, dtype=bool)
+            mask[out_idx] = False
+            pcd_data = np.delete(batch_data_t[k,:,:], out_idx, axis=0)
+            #replace the deleted points with existing points
+            replace_idx = np.random.choice(np.arange(num_points-out_num), out_num)
+            replace_points = pcd_data[replace_idx,:]
+            pcd_data = np.concatenate((pcd_data, replace_points), axis=0)
+            batch_data_t[k,:,:] = pcd_data
     
     return batch_data_t
