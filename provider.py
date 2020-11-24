@@ -164,7 +164,7 @@ def bubble_cropout(batch_data, max_bubble_radius, random_bubble_radius=True, clo
 
     #pick one point from each point cloud as bubble center
     bubble_centers_idx = np.random.choice(np.arange(num_points), batch_size)  #[32*1]
-    bubble_centers = batch_data[np.arange(batch_size), bubble_centers_idx, :] #[32*3]
+    bubble_centers = batch_data[np.arange(batch_size), bubble_centers_idx, :] + 0.001 #[32*3]
     bubble_centers = np.expand_dims(bubble_centers, 1) #[32,1,3]
 
     #apply translation
