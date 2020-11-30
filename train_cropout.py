@@ -28,7 +28,7 @@ parser.add_argument('--decay_step', type=int, default=200000, help='Decay step f
 parser.add_argument('--decay_rate', type=float, default=0.7, help='Decay rate for lr decay [default: 0.8]')
 parser.add_argument('--cropout_type', default='bounding_sphere', help='bounding_sphere or bubble')
 parser.add_argument('--max_trans_dist', type=float, default=0.25, help='Maximum translation distance or max bubble radius for cropout [default: 0.25]')
-parser.add_argument('--close', type=bool, default=True, help='Whether to close the opening created by cropout [default: True]')
+parser.add_argument('--close', type=bool, default=False, help='Whether to close the opening created by cropout [default: False]')
 FLAGS = parser.parse_args()
 
 
