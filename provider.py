@@ -176,18 +176,20 @@ def bubble_cropout(batch_data, max_bubble_radius, random_bubble_radius=True, clo
         batch_data_t[out_idx[0],out_idx[1],:] = \
             batch_data_t[out_idx[0],out_idx[1],:]/np.expand_dims(batch_dist[out_idx],1) * max_bubble_radius
     else:
-        for k in range(batch_size):
-            #mask out points outside the boundary
-            out_idx = np.where(batch_dist[k,:]<max_bubble_radius)
-            out_num = len(out_idx[0])
-            mask = np.ones(num_points, dtype=bool)
-            mask[out_idx] = False
-            pcd_data = np.delete(batch_data_t[k,:,:], out_idx, axis=0)
-            #replace the deleted points with existing points
-            replace_idx = np.random.choice(np.arange(num_points-out_num), out_num)
-            replace_points = pcd_data[replace_idx,:]
-            pcd_data = np.concatenate((pcd_data, replace_points), axis=0)
-            batch_data_t[k,:,:] = pcd_data
+        # for k in range(batch_size):
+        #     #mask out points outside the boundary
+        #     out_idx = np.where(batch_dist[k,:]<max_bubble_radius)
+        #     out_num = len(out_idx[0])
+        #     mask = np.ones(num_points, dtype=bool)
+        #     mask[out_idx] = False
+        #     pcd_data = np.delete(batch_data_t[k,:,:], out_idx, axis=0)
+        #     #replace the deleted points with existing points
+        #     replace_idx = np.random.choice(np.arange(num_points-out_num), out_num)
+        #     replace_points = pcd_data[replace_idx,:]
+        #     pcd_data = np.concatenate((pcd_data, replace_points), axis=0)
+        #     batch_data_t[k,:,:] = pcd_data
+        out_idx = np.where(batch_dist<max_bubble_radius)
+        batch_data_t[out_idx[0],out_idx[1],:] = 0
     
     batch_data = batch_data_t + bubble_centers
     return batch_data

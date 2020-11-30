@@ -202,7 +202,7 @@ def train_one_epoch(sess, ops, train_writer):
             if CROPOUT_TYPE == 'bounding_sphere':
                 cropped_data = provider.cropout_point_cloud(current_data[start_idx:end_idx,:,:,], FLAGS.max_trans_dist, random_trans_dist=True, close=FLAGS.close)
             elif CROPOUT_TYPE == 'bubble':
-                cropped_data = provider.bubble_cropout(current_data[start_idx:end_idx,:,:,], FLAGS.max_trans_dist, random_bubble_radius=True, close=FLAGS.close)
+                cropped_data = provider.bubble_cropout(current_data[start_idx:end_idx,:,:,], FLAGS.max_trans_dist, random_bubble_radius=False, close=FLAGS.close)
             else:
                 print("cropeout_type does not exist")
                 return
