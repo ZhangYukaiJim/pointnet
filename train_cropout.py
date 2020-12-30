@@ -199,15 +199,15 @@ def train_one_epoch(sess, ops, train_writer):
             end_idx = (batch_idx+1) * BATCH_SIZE
             
             # Augment batched point clouds by rotation and jittering
+            rotated_data = provider.rotate_point_cloud(current_data[start_idx:end_idx,:,:,])
+            jittered_data = provider.jitter_point_cloud(rotated_data)
             if CROPOUT_TYPE == 'bounding_sphere':
-                cropped_data = provider.cropout_point_cloud(current_data[start_idx:end_idx,:,:,], FLAGS.max_trans_dist, random_trans_dist=True, close=FLAGS.close)
+                cropped_data = provider.cropout_point_cloud(jittered_data, FLAGS.max_trans_dist, random_trans_dist=True, close=FLAGS.close)
             elif CROPOUT_TYPE == 'bubble':
-                cropped_data = provider.bubble_cropout(current_data[start_idx:end_idx,:,:,], FLAGS.max_trans_dist, random_bubble_radius=False, close=FLAGS.close)
+                cropped_data = provider.bubble_cropout(jittered_data, FLAGS.max_trans_dist, random_bubble_radius=False, close=FLAGS.close)
             else:
                 print("cropeout_type does not exist")
                 return
-            rotated_data = provider.rotate_point_cloud(cropped_data)
-            jittered_data = provider.jitter_point_cloud(rotated_data)
             feed_dict = {ops['pointclouds_pl']: jittered_data,
                          ops['labels_pl']: current_label[start_idx:end_idx],
                          ops['is_training_pl']: is_training,}
