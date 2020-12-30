@@ -208,7 +208,7 @@ def train_one_epoch(sess, ops, train_writer):
             else:
                 print("cropeout_type does not exist")
                 return
-            feed_dict = {ops['pointclouds_pl']: jittered_data,
+            feed_dict = {ops['pointclouds_pl']: cropped_data,
                          ops['labels_pl']: current_label[start_idx:end_idx],
                          ops['is_training_pl']: is_training,}
             summary, step, _, loss_val, pred_val = sess.run([ops['merged'], ops['step'],
